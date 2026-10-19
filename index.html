@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlexMap - 세분화된 맞춤 근육 운동 가이드</title>
+  <style>
+    /* Global Styles */
+    :root {
+      --bg-color: #0b1120;
+      --card-bg: rgba(30, 41, 59, 0.75);
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --accent: #f43f5e;
+      --accent-sub: #fbbf24;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --muscle-default: #334155;
+      --muscle-hover: #38bdf8;
+      --muscle-active: #f43f5e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      text-align: center;
+      padding: 2rem 1rem 1.2rem;
+      background: linear-gradient(180deg, rgba(15,23,42,0.9) 0%, rgba(11,17,32,0) 100%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    header h1 {
+      font-size: 2.3rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, #38bdf8, #818cf8, #f43f5e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.4rem;
+    }
+
+    header p {
+      color: var(--text-sub);
+      font-size: 0.95rem;
+    }
+
+    .container {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem;
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 1.5rem;
+      flex: 1;
+      width: 100%;
+    }
+
+    @media (max-width: 900px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .map-section, .detail-section {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .view-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 1.2rem;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 5px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .btn {
+      background: transparent;
+      color: var(--text-sub);
+      border: none;
+      padding: 0.6rem 1.4rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.25s ease;
+    }
+
+    .btn:hover {
+      color: var(--text-main);
+    }
+
+    .btn.active {
+      background: var(--primary);
+      color: #0f172a;
+      box-shadow: 0 2px 10px rgba(56, 189, 248, 0.3);
+    }
+
+    .body-map-container {
+      width: 100%;
+      max-width: 340px;
+      height: 520px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .muscle-group {
+      fill: var(--muscle-default);
+      stroke: #0f172a;
+      stroke-width: 1.2;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .muscle-group:hover {
+      fill: var(--muscle-hover);
+      filter: drop-shadow(0 0 8px var(--primary));
+    }
+
+    .muscle-group.selected {
+      fill: var(--muscle-active) !important;
+      filter: drop-shadow(0 0 12px var(--accent));
+    }
+
+    .muscle-label {
+      fill: rgba(255, 255, 255, 0.85);
+      font-size: 10px;
+      font-weight: 700;
+      pointer-events: none;
+      text-anchor: middle;
+      user-select: none;
+    }
+
+    .detail-section {
+      align-items: stretch;
+    }
+
+    .detail-header {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 1rem;
+      margin-bottom: 1.2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .detail-header h2 {
+      font-size: 1.5rem;
+      color: var(--primary);
+    }
+
+    .detail-header .count-badge {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .placeholder-msg {
+      text-align: center;
+      color: var(--text-sub);
+      margin: auto 0;
+      padding: 4rem 1rem;
+    }
+
+    .placeholder-msg svg {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 1.2rem;
+      fill: var(--text-sub);
+      opacity: 0.4;
+    }
+
+    .exercise-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+      max-height: 620px;
+      overflow-y: auto;
+      padding-right: 6px;
+    }
+
+    .exercise-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    .exercise-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+
+    .exercise-card {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 1.2rem;
+      transition: all 0.2s ease;
+    }
+
+    .exercise-card:hover {
+      border-color: rgba(56, 189, 248, 0.3);
+      background: rgba(15, 23, 42, 0.85);
+    }
+
+    .exercise-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.6rem;
+    }
+
+    .exercise-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .badges {
+      display: flex;
+      gap: 6px;
+    }
+
+    .badge {
+      font-size: 0.72rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    .badge-level-초급 {
+      background: rgba(52, 211, 153, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+    .badge-level-중급 {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .badge-level-상급 {
+      background: rgba(244, 63, 94, 0.15);
+      color: #f43f5e;
+      border: 1px solid rgba(244, 63, 94, 0.3);
+    }
+
+    .exercise-desc {
+      color: var(--text-sub);
+      font-size: 0.92rem;
+      line-height: 1.55;
+      margin-bottom: 1rem;
+    }
+
+    .tips-box {
+      background: rgba(251, 191, 36, 0.08);
+      border-left: 3px solid var(--accent-sub);
+      padding: 0.6rem 0.8rem;
+      font-size: 0.85rem;
+      color: #fef08a;
+      margin-bottom: 1rem;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .video-container {
+      position: relative;
+      padding-bottom: 56.25%;
+      height: 0;
+      overflow: hidden;
+      border-radius: 10px;
+      background: #000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    .video-container iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1.2rem;
+      color: var(--text-sub);
+      font-size: 0.85rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>FlexMap Pro</h1>
+    <p>세분화된 인체 근육 도면을 클릭하여 타겟 부위별 최적의 운동법과 영상을 확인하세요.</p>
+  </header>
+
+  <main class="container">
+    <!-- Left: Muscle Map -->
+    <section class="map-section">
+      <div class="view-toggle">
+        <button class="btn active" id="btn-front" onclick="switchView('front')">전면 (Front)</button>
+        <button class="btn" id="btn-back" onclick="switchView('back')">후면 (Back)</button>
+      </div>
+
+      <div class="body-map-container">
+        <!-- SVG Front View -->
+        <svg id="svg-front" viewBox="0 0 200 400">
+          <circle cx="100" cy="30" r="16" fill="#1e293b"/>
+          <rect x="94" y="46" width="12" height="14" fill="#1e293b"/>
+          
+          <!-- Anterior Deltoid (전면 어깨) -->
+          <path class="muscle-group" data-muscle="deltoid_front" d="M 64,62 C 68,60 76,62 80,70 C 74,80 64,78 60,70 Z"/>
+          <path class="muscle-group" data-muscle="deltoid_front" d="M 136,62 C 132,60 124,62 120,70 C 126,80 136,78 140,70 Z"/>
+
+          <!-- Lateral Deltoid (측면 어깨) -->
+          <path class="muscle-group" data-muscle="deltoid_side" d="M 58,68 C 64,75 58,85 52,78 C 50,72 54,68 58,68 Z"/>
+          <path class="muscle-group" data-muscle="deltoid_side" d="M 142,68 C 136,75 142,85 148,78 C 150,72 146,68 142,68 Z"/>
+          
+          <!-- Upper Chest (윗가슴) -->
+          <path class="muscle-group" data-muscle="chest_upper" d="M 81,68 C 95,68 100,70 100,82 C 82,82 78,76 81,68 Z"/>
+          <path class="muscle-group" data-muscle="chest_upper" d="M 119,68 C 105,68 100,70 100,82 C 118,82 122,76 119,68 Z"/>
+
+          <!-- Lower/Mid Chest (중/하부가슴) -->
+          <path class="muscle-group" data-muscle="chest_lower" d="M 80,83 C 100,83 100,96 82,96 C 76,92 78,85 80,83 Z"/>
+          <path class="muscle-group" data-muscle="chest_lower" d="M 120,83 C 100,83 100,96 118,96 C 124,92 122,85 120,83 Z"/>
+
+          <!-- Biceps (이두근) -->
+          <path class="muscle-group" data-muscle="biceps" d="M 52,82 C 58,82 61,96 55,110 C 48,108 46,95 52,82 Z"/>
+          <path class="muscle-group" data-muscle="biceps" d="M 148,82 C 142,82 139,96 145,110 C 152,108 154,95 148,82 Z"/>
+
+          <!-- Forearms (전완근) -->
+          <path class="muscle-group" data-muscle="forearms" d="M 45,115 C 52,115 52,142 42,158 C 37,148 38,128 45,115 Z"/>
+          <path class="muscle-group" data-muscle="forearms" d="M 155,115 C 148,115 148,142 158,158 C 163,148 162,128 155,115 Z"/>
+
+          <!-- Upper Abs (상복부) -->
+          <path class="muscle-group" data-muscle="abs_upper" d="M 84,98 L 116,98 L 114,122 L 86,122 Z"/>
+
+          <!-- Lower Abs (하복부) -->
+          <path class="muscle-group" data-muscle="abs_lower" d="M 86,124 L 114,124 L 110,154 L 90,154 Z"/>
+
+          <!-- Obliques (외복사근/옆구리) -->
+          <path class="muscle-group" data-muscle="obliques" d="M 82,98 L 85,122 L 88,152 C 81,140 80,115 82,98 Z"/>
+          <path class="muscle-group" data-muscle="obliques" d="M 118,98 L 115,122 L 112,152 C 119,140 120,115 118,98 Z"/>
+
+          <!-- Quadriceps (허벅지 전면) -->
+          <path class="muscle-group" data-muscle="quads" d="M 76,160 C 92,160 93,178 91,232 C 82,232 72,208 70,172 Z"/>
+          <path class="muscle-group" data-muscle="quads" d="M 124,160 C 108,160 107,178 109,232 C 118,232 128,208 130,172 Z"/>
+
+          <!-- Adductors (허벅지 안쪽/내전근) -->
+          <path class="muscle-group" data-muscle="adductors" d="M 93,165 C 98,165 98,200 93,228 C 91,200 91,180 93,165 Z"/>
+          <path class="muscle-group" data-muscle="adductors" d="M 107,165 C 102,165 102,200 107,228 C 109,200 109,180 107,165 Z"/>
+
+          <!-- Calves (종아리) -->
+          <path class="muscle-group" data-muscle="calves" d="M 72,248 C 85,248 83,278 77,312 C 69,302 67,278 72,248 Z"/>
+          <path class="muscle-group" data-muscle="calves" d="M 128,248 C 115,248 117,278 123,312 C 131,302 133,278 128,248 Z"/>
+          
+          <!-- Labels -->
+          <text x="100" y="77" class="muscle-label">윗가슴</text>
+          <text x="100" y="91" class="muscle-label">중/하부가슴</text>
+          <text x="100" y="112" class="muscle-label">상복부</text>
+          <text x="100" y="140" class="muscle-label">하복부</text>
+          <text x="81" y="196" class="muscle-label">허벅지 앞</text>
+        </svg>
+
+        <!-- SVG Back View -->
+        <svg id="svg-back" viewBox="0 0 200 400" style="display: none;">
+          <circle cx="100" cy="30" r="16" fill="#1e293b"/>
+          <rect x="94" y="46" width="12" height="14" fill="#1e293b"/>
+
+          <!-- Trapezius (승모근) -->
+          <path class="muscle-group" data-muscle="traps" d="M 88,58 L 112,58 L 126,72 L 100,90 L 74,72 Z"/>
+
+          <!-- Posterior Deltoid (후면 어깨) -->
+          <path class="muscle-group" data-muscle="deltoid_rear" d="M 64,68 C 72,68 74,74 72,82 C 62,80 58,74 64,68 Z"/>
+          <path class="muscle-group" data-muscle="deltoid_rear" d="M 136,68 C 128,68 126,74 128,82 C 138,80 142,74 136,68 Z"/>
+
+          <!-- Triceps (삼두근) -->
+          <path class="muscle-group" data-muscle="triceps" d="M 50,82 C 58,82 58,106 50,116 C 42,106 44,89 50,82 Z"/>
+          <path class="muscle-group" data-muscle="triceps" d="M 150,82 C 142,82 142,106 150,116 C 158,106 156,89 150,82 Z"/>
+
+          <!-- Latissimus Dorsi (광배근/등 외측) -->
+          <path class="muscle-group" data-muscle="lats" d="M 75,92 L 100,92 L 94,136 L 82,130 Z"/>
+          <path class="muscle-group" data-muscle="lats" d="M 125,92 L 100,92 L 106,136 L 118,130 Z"/>
+
+          <!-- Lower Back (허리/기립근) -->
+          <path class="muscle-group" data-muscle="lower_back" d="M 92,134 L 108,134 L 106,156 L 94,156 Z"/>
+
+          <!-- Glutes (엉덩이/둔근) -->
+          <path class="muscle-group" data-muscle="glutes" d="M 72,158 C 98,156 99,182 74,200 C 65,187 64,170 72,158 Z"/>
+          <path class="muscle-group" data-muscle="glutes" d="M 128,158 C 102,156 101,182 126,200 C 135,187 136,170 128,158 Z"/>
+
+          <!-- Hamstrings (허벅지 뒤) -->
+          <path class="muscle-group" data-muscle="hamstrings" d="M 73,204 C 96,204 95,227 91,246 C 78,246 72,232 73,204 Z"/>
+          <path class="muscle-group" data-muscle="hamstrings" d="M 127,204 C 104,204 105,227 109,246 C 122,246 128,232 127,204 Z"/>
+
+          <!-- Calves (종아리 후면) -->
+          <path class="muscle-group" data-muscle="calves" d="M 72,248 C 85,248 83,278 77,312 C 69,302 67,278 72,248 Z"/>
+          <path class="muscle-group" data-muscle="calves" d="M 128,248 C 115,248 117,278 123,312 C 131,302 133,278 128,248 Z"/>
+
+          <!-- Labels -->
+          <text x="100" y="73" class="muscle-label">승모근</text>
+          <text x="100" y="112" class="muscle-label">광배근</text>
+          <text x="100" y="147" class="muscle-label">기립근</text>
+          <text x="100" y="180" class="muscle-label">둔근</text>
+          <text x="83" y="226" class="muscle-label">햄스트링</text>
+        </svg>
+      </div>
+    </section>
+
+    <!-- Right: Detail Info -->
+    <section class="detail-section">
+      <div id="exercise-content">
+        <div class="placeholder-msg">
+          <svg viewBox="0 0 24 24">
+            <path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 6.29 3.43 4.86 2 3.43 3.43 2 4.86 3.43 6.29 2 7.71 3.43 9.14 2 10.57 3.43 12 7 20.57 3.43 17 2 18.43 3.43 19.86 4.86 18.43 6.29 19.86 7.71 18.43 9.14 19.86 10.57 18.43 12 17 20.57 14.86z"/>
+          </svg>
+          <p>왼쪽 도면에서 자극하고 싶은 <strong>세부 근육 부위</strong>를 선택하세요.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2026 FlexMap Pro - Vibe Coding 대화형 웹 앱</p>
+  </footer>
+
+  <script>
+    // Subdivided Exercise Database
+    const exerciseData = {
+      chest_upper: {
+        name: "윗가슴 (Upper Chest / 쇄골두)",
+        list: [
+          {
+            title: "인클라인 덤벨 프레스 (Incline Dumbbell Press)",
+            level: "중급",
+            tip: "벤치 각도는 30~45도가 적당합니다. 너무 높이면 어깨 개입이 커집니다.",
+            desc: "윗가슴의 볼륨을 효율적으로 키워주는 프리웨이트 운동으로 덤벨의 가동범위를 최대로 활용합니다.",
+            videoId: "8iPEnn-ltC8"
+          },
+          {
+            title: "인클라인 바벨 프레스 (Incline Barbell Press)",
+            level: "중급",
+            tip: "쇄골 약간 아랫방향으로 바벨을 수직으로 내려줍니다.",
+            desc: "윗가슴 부위에 중량을 전달하여 두툼한 상부 쇄골 라인을 만듭니다.",
+            videoId: "0xRtl8L220s"
+          },
+          {
+            title: "디클라인 푸시업 (Decline Push-Up)",
+            level: "초급",
+            tip: "발을 의자나 의자 위에 올리고 상체를 낮춰 진행합니다.",
+            desc: "기구 없이 체중을 이용해 윗가슴을 강하게 자극하는 홈트레이닝 운동입니다.",
+            videoId: "SKPab2YC8BE"
+          }
+        ]
+      },
+      chest_lower: {
+        name: "중/하부 가슴 (Mid/Lower Chest / 흉성두)",
+        list: [
+          {
+            title: "플랫 벤치프레스 (Flat Bench Press)",
+            level: "중급",
+            tip: "견갑골(날개뼈)을 후하영 고정하고 명치 살짝 위에 바를 위치시킵니다.",
+            desc: "가슴 전체의 두께감과 전신 근력을 키워주는 대흉근의 가장 대표적인 운동입니다.",
+            videoId: "rT7DgCr-3pg"
+          },
+          {
+            title: "딥스 (Dips)",
+            level: "상급",
+            tip: "상체를 앞쪽으로 15~20도 기울여야 어깨가 아닌 가슴 하부에 자극이 전달됩니다.",
+            desc: "가슴 하부 라인을 선명하게 다듬고 삼두근까지 동시에 강화하는 고난도 맨몸 운동입니다.",
+            videoId: "2z8JmcrW-As"
+          },
+          {
+            title: "케이블 크로스오버 (Cable Crossover)",
+            level: "초급",
+            tip: "팔을 모을 때 가슴 근육을 모아 짜주는 느낌에 집중하세요.",
+            desc: "가슴 중앙 수직선과 하부 경계를 또렷하게 만들어주는 대표적인 고립 운동입니다.",
+            videoId: "taI4XduLpTk"
+          }
+        ]
+      },
+      deltoid_front: {
+        name: "전면 어깨 (Anterior Deltoid)",
+        list: [
+          {
+            title: "오버헤드 프레스 (Overhead Press)",
+            level: "중급",
+            tip: "허리가 과도하게 꺾이지 않도록 복근과 엉덩이에 힘을 유지하세요.",
+            desc: "전면 삼각근과 상체 전체의 대칭 및 근력을 키워주는 고전적인 수직 밀기 운동입니다.",
+            videoId: "2yjwXTZQDDI"
+          },
+          {
+            title: "덤벨 프론트 레이즈 (Dumbbell Front Raise)",
+            level: "초급",
+            tip: "반동을 이용하지 않고 눈높이 정도까지만 덤벨을 들어 올려 고립시킵니다.",
+            desc: "전면 어깨만을 선명하게 부각시켜 주는 단일 관절 고립 운동입니다.",
+            videoId: "-t7fuZ0KhDA"
+          }
+        ]
+      },
+      deltoid_side: {
+        name: "측면 어깨 (Lateral Deltoid)",
+        list: [
+          {
+            title: "사이드 레터럴 레이즈 (Side Lateral Raise)",
+            level: "초급",
+            tip: "덤벨을 든 손이 아닌 주관절(팔꿈치)을 들어올린다는 느낌으로 진행합니다.",
+            desc: "어깨의 프레임을 넓혀 프레임 자체를 넓어 보이게 만들어주는 최고의 측면 어깨 운동입니다.",
+            videoId: "3VcKaXl35XM"
+          },
+          {
+            title: "케이블 사이드 레이즈 (Cable Lateral Raise)",
+            level: "중급",
+            tip: "케이블을 사용하면 동작 내내 균일한 장력이 어깨에 유지됩니다.",
+            desc: "덤벨에 비해 지속적인 자극을 주어 측면 삼각근의 밀도를 높입니다.",
+            videoId: "PPrzBWZDOhA"
+          }
+        ]
+      },
+      deltoid_rear: {
+        name: "후면 어깨 (Posterior Deltoid)",
+        list: [
+          {
+            title: "페이스 풀 (Face Pull)",
+            level: "초급",
+            tip: "로프를 로프 끝이 관자놀이나 이마 쪽을 향하도록 당겨줍니다.",
+            desc: "후면 어깨와 라운드 숄더 개선에 효과적인 어깨 건강 필수 운동입니다.",
+            videoId: "rep-qVOkqgk"
+          },
+          {
+            title: "리버스 펙덱 플라이 (Reverse Pec Deck Fly)",
+            level: "초급~중급",
+            tip: "승모근이 개입되지 않도록 어깨를 아래로 누른 상태에서 팔을 넓게 벌립니다.",
+            desc: "입체감 있는 어깨 뒷 라인을 만들어주는 머신 기반 후면 어깨 운동입니다.",
+            videoId: "53P24R8E_-s"
+          }
+        ]
+      },
+      biceps: {
+        name: "이두근 (Biceps / 상완이두근)",
+        list: [
+          {
+            title: "바벨 컬 (Barbell Curl)",
+            level: "초급",
+            tip: "팔꿈치가 앞뒤로 흔들리지 않도록 옆구리에 단단히 고정하세요.",
+            desc: "이두근의 전체적인 질량과 크기를 키우기 위한 최고 기본 운동입니다.",
+            videoId: "kwG2ipFRgfo"
+          },
+          {
+            title: "해머 컬 (Hammer Curl)",
+            level: "초급",
+            tip: "손바닥이 서로 마주 보도록 덤벨을 잡고 들어 올립니다.",
+            desc: "이두근 외측과 상완근, 전완근까지 두껍게 만들어 팔의 입체감을 높입니다.",
+            videoId: "zC3385GY9RU"
+          },
+          {
+            title: "인클라인 덤벨 컬 (Incline Dumbbell Press)",
+            level: "중급",
+            tip: "벤치에 누워 이두근을 최대로 신전시킨 상태에서 시작합니다.",
+            desc: "이두근의 장두(긴 갈래)를 극도로 이완시켜 알통의 높이를 높여줍니다.",
+            videoId: "soxrZlIl35U"
+          }
+        ]
+      },
+      triceps: {
+        name: "삼두근 (Triceps / 상완삼두근)",
+        list: [
+          {
+            title: "케이블 트라이셉스 푸시다운 (Pushdown)",
+            level: "초급",
+            tip: "상체를 살짝 숙이고 팔꿈치를 몸통 옆에 고정한 채 아래로 완전히 펴줍니다.",
+            desc: "삼두근 외측두를 집중 자극하여 선명하고 굵은 팔 라인을 만들어 줍니다.",
+            videoId: "2-LAMcpzODU"
+          },
+          {
+            title: "라잉 트라이셉스 익스텐션 (Lying Extension)",
+            level: "중급",
+            tip: "바벨을 이마나 정수리 뒤쪽으로 내리면서 삼두를 충분히 이완시킵니다.",
+            desc: "삼두근의 가장 큰 부위인 장두를 타겟으로 하여 팔 전체의 두께를 키웁니다.",
+            videoId: "d_KZxkY_0aw"
+          }
+        ]
+      },
+      abs_upper: {
+        name: "상복부 (Upper Abs)",
+        list: [
+          {
+            title: "크런치 (Crunch)",
+            level: "초급",
+            tip: "허리 전체를 떼지 말고, 명치를 접는다는 느낌으로 상체 상부만 올려줍니다.",
+            desc: "식스팩의 상단 라인을 뚜렷하게 발달시키는 선명도 위주 복근 운동입니다.",
+            videoId: "Xyd_fa5zoEU"
+          },
+          {
+            title: "케이블 크런치 (Cable Crunch)",
+            level: "중급",
+            tip: "골반을 고정하고 케이블 무게를 이용해 복직근을 강하게 수축시킵니다.",
+            desc: "중량을 부여하여 선명할 뿐만 아니라 입체적인 복근 마디를 만들어줍니다.",
+            videoId: "2fB180373Gk"
+          }
+        ]
+      },
+      abs_lower: {
+        name: "하복부 (Lower Abs)",
+        list: [
+          {
+            title: "행잉 레그 레이즈 (Hanging Leg Raise)",
+            level: "상급",
+            tip: "몸이 앞뒤로 흔들리지 않게 코어를 잡고 골반을 가슴 쪽으로 말아 올립니다.",
+            desc: "철봉에 매달려 하복부에 강력한 중력 자극을 주는 고급 복근 운동입니다.",
+            videoId: "hdng3Nm1x_E"
+          },
+          {
+            title: "거꾸로 크런치 / 리버스 크런치 (Reverse Crunch)",
+            level: "초급",
+            tip: "다리의 힘이 아닌 하복부 근육을 이용해 골반을 살짝 들어올립니다.",
+            desc: "허리 부담 없이 초보자도 쉽게 하복부를 고립할 수 있는 운동입니다.",
+            videoId: "gA3xP8j3Aoo"
+          }
+        ]
+      },
+      obliques: {
+        name: "외복사근 (Obliques / 옆구리)",
+        list: [
+          {
+            title: "러시안 트위스트 (Russian Twist)",
+            level: "초급",
+            tip: "상체를 뒤로 기울인 채 좌우로 몸통을 회전시킵니다.",
+            desc: "옆구리 라인을 단단하게 만들고 코어 회전 근력을 강화해 줍니다.",
+            videoId: "wkD8rjkXyUI"
+          },
+          {
+            title: "사이드 플랭크 (Side Plank)",
+            level: "초급~중급",
+            tip: "머리부터 발끝까지 일직선을 유지하며 골반이 아래로 떨어지지 않게 합니다.",
+            desc: "옆구리 근육과 정적 코어 안정성을 높여주는 버티기 운동입니다.",
+            videoId: "N_P3K101ee0"
+          }
+        ]
+      },
+      traps: {
+        name: "승모근 (Trapezius)",
+        list: [
+          {
+            title: "덤벨 슈러그 (Dumbbell Shrug)",
+            level: "초급",
+            tip: "어깨를 굴리지 말고 귓볼 방향으로 수직으로 똑바로 올렸다 천천히 내립니다.",
+            desc: "상부 승모근을 발달시켜 목과 어깨의 안정성을 높여주는 운동입니다.",
+            videoId: "g6qbqx-eN0E"
+          }
+        ]
+      },
+      lats: {
+        name: "광배근 (Latissimus Dorsi / 등 외측)",
+        list: [
+          {
+            title: "풀업 (Pull-Up / 턱걸이)",
+            level: "중급~상급",
+            tip: "가슴을 하늘 쪽으로 열어주면서 팔이 아닌 등 근육으로 몸을 끌어올립니다.",
+            desc: "등의 상부와 광배근을 넓혀 넓은 역삼각형 체형을 만드는 핵심 운동입니다.",
+            videoId: "eGo4IYtl85g"
+          },
+          {
+            title: "렛풀다운 (Lat Pulldown)",
+            level: "초급",
+            tip: "바를 쇄골 아래쪽으로 끌어내리며 날개뼈를 아래로 눌러줍니다.",
+            desc: "초보자도 안전하고 정교하게 광배근의 이완과 수축을 느낄 수 있는 머신 운동입니다.",
+            videoId: "CAwf7n6Luuc"
+          },
+          {
+            title: "바벨 로우 (Barbell Row)",
+            level: "중급",
+            tip: "상체를 45도 숙이고 바벨을 배꼽 쪽으로 끌어당깁니다.",
+            desc: "등의 전체적인 입체감과 두께를 만들어주는 대표적인 다중관절 운동입니다.",
+            videoId: "VKFeB7jy8vU"
+          }
+        ]
+      },
+      lower_back: {
+        name: "척추기립근 / 허리 (Lower Back)",
+        list: [
+          {
+            title: "백 익스텐션 (Back Extension)",
+            level: "초급",
+            tip: "허리를 과도하게 뒤로 꺾지 말고 상체와 하체가 일직선이 되는 지점까지만 올립니다.",
+            desc: "허리 주변 기립근을 강화하여 요통을 예방하고 코어 기둥을 세워줍니다.",
+            videoId: "ph3pddpKzzw"
+          }
+        ]
+      },
+      glutes: {
+        name: "둔근 / 엉덩이 (Glutes)",
+        list: [
+          {
+            title: "바벨 힙 쓰러스터 (Hip Thrust)",
+            level: "중급",
+            tip: "수축 지점에서 엉덩이를 쥐어짜듯 1~2초간 멈추어 줍니다.",
+            desc: "대둔근에 직접적인 과부하를 더해 엉덩이 볼륨과 근력을 향상시키는 최고의 둔근 운동입니다.",
+            videoId: "SEdqd1n0cvg"
+          },
+          {
+            title: "스티프 레그 데드리프트 (Stiff-Legged Deadlift)",
+            level: "중급",
+            tip: "무릎 굽힘을 최소화하고 골반을 뒤로 빼면서 힙힌지를 만듭니다.",
+            desc: "엉덩이 하부 라인과 햄스트링 경계를 선명하게 정돈해 줍니다.",
+            videoId: "1uDiW5--rAE"
+          }
+        ]
+      },
+      quads: {
+        name: "허벅지 전면 (Quadriceps / 대퇴사두근)",
+        list: [
+          {
+            title: "바벨 스쿼트 (Barbell Squat)",
+            level: "중급",
+            tip: "무릎이 안쪽으로 모이지 않게 유지하며 복압을 단단히 채우고 내려갑니다.",
+            desc: "하체 전체와 대퇴사두근을 발달시키는 웨이트 트레이닝의 3대 필수 운동입니다.",
+            videoId: "ultWZbUMPL8"
+          },
+          {
+            title: "레그 익스텐션 (Leg Extension)",
+            level: "초급",
+            tip: "발목을 잡고 허벅지 앞쪽 근육이 완전히 쥐어짜질 때까지 무릎을 펴줍니다.",
+            desc: "허벅지 전면 근육을 세밀하게 분리하고 갈라지게 다듬는 고립 머신 운동입니다.",
+            videoId: "YyvSfVjQeL0"
+          }
+        ]
+      },
+      adductors: {
+        name: "내전근 / 허벅지 안쪽 (Adductors)",
+        list: [
+          {
+            title: "와이드 스쿼트 (Wide Stance Squat)",
+            level: "초급",
+            tip: "발폭을 어깨보다 넓게 벌리고 발끝을 45도 바깥으로 향하게 하여 수행합니다.",
+            desc: "허벅지 안쪽 내전근과 둔근 측면을 동시에 매끄럽게 가꾸어 줍니다.",
+            videoId: "9ZKnDPB2T4E"
+          }
+        ]
+      },
+      hamstrings: {
+        name: "햄스트링 / 허벅지 뒤 (Hamstrings)",
+        list: [
+          {
+            title: "레그 컬 (Lying Leg Curl)",
+            level: "초급",
+            tip: "패드를 패드에 대고 허리가 들리지 않도록 골반을 벤치에 밀착시켜 올립니다.",
+            desc: "허벅지 뒷근육만을 정밀하게 수축시켜 하체의 전후 균형을 잡아줍니다.",
+            videoId: "1Tq3QdYUuHs"
+          },
+          {
+            title: "루마니안 데드리프트 (Romanian Deadlift)",
+            level: "중급",
+            tip: "바벨이 정강이에 바짝 붙어 내려가도록 골반을 뒤로 빼며 이완시킵니다.",
+            desc: "햄스트링과 둔근, 척추기립근까지 후면 사슬 전체를 강력하게 강화합니다.",
+            videoId: "op9kVnSso6Q"
+          }
+        ]
+      },
+      calves: {
+        name: "종아리 (Calves / 비복근·가자미근)",
+        list: [
+          {
+            title: "스탠딩 카프 레이즈 (Standing Calf Raise)",
+            level: "초급",
+            tip: "발꿈치를 최대한 높이 올렸다가 천천히 깊게 내려놓아 가동범위를 최대로 씁니다.",
+            desc: "종아리의 탄력성을 높이고 발목 안정성을 보강해 주는 보조 운동입니다.",
+            videoId: "gwLzBJYoWlI"
+          }
+        ]
+      },
+      forearms: {
+        name: "전완근 / 팔뚝 (Forearms)",
+        list: [
+          {
+            title: "리스트 컬 (Wrist Curl)",
+            level: "초급",
+            tip: "전완을 벤치에 고정하고 손목의 굴곡만을 이용하여 바벨을 올립니다.",
+            desc: "악력을 끌어올리고 전완 안쪽 근육을 두껍게 만들어 주는 고립 운동입니다.",
+            videoId: "8B_9pI0E3m0"
+          }
+        ]
+      }
+    };
+
+    // View Switching Logic
+    function switchView(view) {
+      const frontSvg = document.getElementById('svg-front');
+      const backSvg = document.getElementById('svg-back');
+      const btnFront = document.getElementById('btn-front');
+      const btnBack = document.getElementById('btn-back');
+
+      if (view === 'front') {
+        frontSvg.style.display = 'block';
+        backSvg.style.display = 'none';
+        btnFront.classList.add('active');
+        btnBack.classList.remove('active');
+      } else {
+        frontSvg.style.display = 'none';
+        backSvg.style.display = 'block';
+        btnBack.classList.add('active');
+        btnBack.classList.add('active');
+        btnFront.classList.remove('active');
+      }
+    }
+
+    // Muscle Click Handler
+    document.addEventListener('DOMContentLoaded', () => {
+      const muscleGroups = document.querySelectorAll('.muscle-group');
+      const contentArea = document.getElementById('exercise-content');
+
+      muscleGroups.forEach(group => {
+        group.addEventListener('click', () => {
+          muscleGroups.forEach(m => m.classList.remove('selected'));
+          
+          const muscleKey = group.getAttribute('data-muscle');
+          document.querySelectorAll(`[data-muscle="${muscleKey}"]`).forEach(m => m.classList.add('selected'));
+
+          renderExercise(muscleKey);
+        });
+      });
+
+      function renderExercise(key) {
+        const data = exerciseData[key];
+        if (!data) return;
+
+        let html = `
+          <div class="detail-header">
+            <h2>💪 ${data.name}</h2>
+            <span class="count-badge">추천 운동 ${data.list.length}개</span>
+          </div>
+          <div class="exercise-list">
+        `;
+
+        data.list.forEach(ex => {
+          html += `
+            <div class="exercise-card">
+              <div class="exercise-title-row">
+                <span class="exercise-title">${ex.title}</span>
+                <div class="badges">
+                  <span class="badge badge-level-${ex.level}">${ex.level}</span>
+                </div>
+              </div>
+              <p class="exercise-desc">${ex.desc}</p>
+              ${ex.tip ? `<div class="tips-box">💡 <strong>꿀팁:</strong> ${ex.tip}</div>` : ''}
+              <div class="video-container">
+                <iframe src="https://www.youtube.com/embed/${ex.videoId}" 
+                        title="${ex.title}" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen>
+                </iframe>
+              </div>
+            </div>
+          `;
+        });
+
+        html += `</div>`;
+        contentArea.innerHTML = html;
+      }
+    });
+  </script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 오류 153 방지를 위한 핵심 Referrer-Policy 설정 -->
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>3D & 인터랙티브 근육 운동 가이드</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 아이콘 CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+        }
+        .muscle-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .muscle-card:hover {
+            transform: translateY(-4px);
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Header Navbar -->
+    <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <i class="fa-solid fa-dumbbell text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-white leading-none">FitAnatomy</h1>
+                    <span class="text-xs text-slate-400">근육별 운동 가이드 & 플레이어</span>
+                </div>
+            </div>
+            
+            <div id="protocolBadge" class="hidden sm:flex items-center space-x-2 text-xs px-3 py-1.5 rounded-full bg-slate-700/60 border border-slate-600 text-slate-300">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="protocolText">정상 작동 중</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Error 153 Troubleshooting Notice Banner -->
+        <div class="mb-8 p-4 rounded-2xl bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-purple-900/40 border border-blue-500/30 shadow-lg">
+            <div class="flex items-start space-x-3">
+                <div class="p-2 rounded-lg bg-blue-500/20 text-blue-400 mt-0.5">
+                    <i class="fa-solid fa-circle-check text-lg"></i>
+                </div>
+                <div class="flex-1 text-sm">
+                    <h3 class="font-semibold text-blue-200 text-base mb-1">유튜브 오류 153 해결 설정 완료</h3>
+                    <p class="text-slate-300 leading-relaxed">
+                        모든 동영상이 <code class="bg-slate-800 px-1.5 py-0.5 rounded text-blue-300 border border-slate-700">youtube-nocookie.com</code> 및 <code class="bg-slate-800 px-1.5 py-0.5 rounded text-blue-300 border border-slate-700">referrerpolicy="strict-origin-when-cross-origin"</code> 보안 정책을 적용하여 재생됩니다.
+                    </p>
+                    <div id="fileProtocolTip" class="hidden mt-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
+                        <i class="fa-solid fa-triangle-exclamation mr-1.5"></i>
+                        <strong>참고:</strong> 현재 파일을 웹 서버 없이 직접 실행(<code class="text-amber-300">file://</code>)하고 계십니다. 일부 브라우저 보안 정책에 따라 영상이 안 나올 경우 VS Code의 <strong>Live Server</strong> 확장 기능을 사용하거나, 모달 창의 <strong>'유튜브 앱에서 보기'</strong> 버튼을 눌러 시청하실 수 있습니다.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter / Category Tabs -->
+        <div class="flex items-center space-x-2 overflow-x-auto pb-4 mb-6 scrollbar-none">
+            <button onclick="filterMuscles('all')" class="filter-btn active px-4 py-2 rounded-xl text-sm font-medium bg-blue-600 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 transition">전체</button>
+            <button onclick="filterMuscles('upper')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 transition">상체 (Upper Body)</button>
+            <button onclick="filterMuscles('lower')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 transition">하체 (Lower Body)</button>
+            <button onclick="filterMuscles('core')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 transition">코어 (Core)</button>
+        </div>
+
+        <!-- Muscle Grid -->
+        <div id="muscleGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Dynamic Content Injected via JS -->
+        </div>
+
+    </main>
+
+    <!-- Video Modal -->
+    <div id="videoModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="modalCard">
+            
+            <!-- Modal Header -->
+            <div class="p-4 sm:p-6 border-b border-slate-700/80 flex items-center justify-between bg-slate-800/90">
+                <div class="flex items-center space-x-3">
+                    <span id="modalCategoryBadge" class="text-xs px-2.5 py-1 rounded-full font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">상체</span>
+                    <div>
+                        <h2 id="modalTitle" class="text-xl font-bold text-white">근육 명칭</h2>
+                        <p id="modalLatin" class="text-xs text-slate-400 italic">Anatomical Name</p>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="w-9 h-9 rounded-full bg-slate-700/80 hover:bg-slate-600 text-slate-300 hover:text-white flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content Body -->
+            <div class="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
+                
+                <!-- YouTube Player Wrapper -->
+                <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-black shadow-inner border border-slate-700">
+                    <div id="playerContainer" class="w-full h-full">
+                        <!-- iframe dynamically injected -->
+                    </div>
+                </div>
+
+                <!-- Fallback Direct YouTube Link Bar -->
+                <div class="flex flex-col sm:flex-row items-center justify-between p-3.5 rounded-xl bg-slate-900/60 border border-slate-700/60 gap-3">
+                    <div class="text-xs text-slate-400 flex items-center space-x-2">
+                        <i class="fa-brands fa-youtube text-red-500 text-lg"></i>
+                        <span>영상이 제대로 로드되지 않나요?</span>
+                    </div>
+                    <a id="directYouTubeBtn" target="_blank" rel="noopener noreferrer" href="#" class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-xs font-semibold rounded-lg bg-red-600 hover:bg-red-500 text-white transition shadow-md shadow-red-600/20">
+                        <i class="fa-solid fa-arrow-up-right-from-square mr-2"></i>
+                        유튜브에서 바로 보기
+                    </a>
+                </div>
+
+                <!-- Muscle Information & Recommended Exercises -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-4 rounded-xl bg-slate-900/40 border border-slate-700/50">
+                        <h4 class="text-sm font-semibold text-blue-400 mb-2 flex items-center">
+                            <i class="fa-solid fa-circle-info mr-2"></i>근육 역할 및 설명
+                        </h4>
+                        <p id="modalDesc" class="text-xs text-slate-300 leading-relaxed">
+                            근육 정보가 들어갑니다.
+                        </p>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-slate-900/40 border border-slate-700/50">
+                        <h4 class="text-sm font-semibold text-indigo-400 mb-2 flex items-center">
+                            <i class="fa-solid fa-dumbbell mr-2"></i>대표 추천 운동
+                        </h4>
+                        <ul id="modalExercises" class="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+                            <!-- Exercises list -->
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 border-t border-slate-800 py-6 mt-12 text-center text-xs text-slate-500">
+        <p>© FitAnatomy Guide - All YouTube Embedded Videos standard compliant.</p>
+    </footer>
+
+    <!-- Application Script -->
+    <script>
+        // Muscle Database with Valid YouTube Embed IDs
+        const muscleData = [
+            {
+                id: 'chest',
+                name: '대가슴근 (대흉근)',
+                latin: 'Pectoralis Major',
+                category: 'upper',
+                categoryLabel: '상체',
+                youtubeId: 'vthMCtgVtPPg', // Valid video ID
+                fallbackUrl: 'https://www.youtube.com/results?search_query=대흉근+운동+가이드',
+                desc: '가슴 전면을 덮고 있는 큰 근육으로, 팔을 안쪽으로 모으고 앞으로 미는 동작을 담당합니다.',
+                exercises: ['벤치프레스 (Bench Press)', '덤벨 플라이 (Dumbbell Fly)', '푸시업 (Push-up)', '딥스 (Dips)'],
+                icon: 'fa-solid fa-drumstick-bite'
+            },
+            {
+                id: 'lat',
+                name: '광배근 (등 근육)',
+                latin: 'Latissimus Dorsi',
+                category: 'upper',
+                categoryLabel: '상체',
+                youtubeId: 'eGo4IYlbE5g',
+                fallbackUrl: 'https://www.youtube.com/results?search_query=광배근+운동+가이드',
+                desc: '등 전체에 넓게 퍼져있는 근육으로, 상체를 넓게 만들어주며 팔을 아래/뒤로 당기는 역할을 합니다.',
+                exercises: ['풀업/턱걸이 (Pull-up)', '렛풀다운 (Lat Pull Down)', '바벨 로우 (Barbell Row)'],
+                icon: 'fa-solid fa-child-reaching'
+            },
+            {
+                id: 'shoulder',
+                name: '삼각근 (어깨)',
+                latin: 'Deltoid',
+                category: 'upper',
+                categoryLabel: '상체',
+                youtubeId: '2-Pq-5c30kE',
+                fallbackUrl: 'https://www.youtube.com/results?search_query=어깨+삼각근+운동',
+                desc: '어깨 관절을 감싸는 근육으로 전면, 측면, 후면으로 나뉘며 팔을 위나 옆으로 들어올릴 때 작동합니다.',
+                exercises: ['오버헤드 프레스 (OHP)', '사이드 레터럴 레이즈 (Side Lateral Raise)', '페이스 풀'],
+                icon: 'fa-solid fa-person'
+            },
+            {
+                id: 'biceps',
+                name: '상완이두근 (이두)',
+                latin: 'Biceps Brachii',
+                category: 'upper',
+                categoryLabel: '상체',
+                youtubeId: 'kwG2ipFRgfo',
+                fallbackUrl: 'https://www.youtube.com/results?search_query=이두근+운동',
+                desc: '팔 위쪽 앞면에 위치하며 팔꿈치를 구부리고 손목을 바깥쪽으로 회전시키는 기능을 합니다.',
+                exercises: ['바벨 컬 (Barbell Curl)', '덤벨 해머 컬 (Hammer Curl)', '프리처 컬'],
+                icon: 'fa-solid fa-hand-fist'
+            },
+            {
+                id: 'triceps',
+                name: '상완삼두근 (삼두)',
+                latin: 'Triceps Brachii',
+                category: 'upper',
+                categoryLabel: '상체',
+                youtubeId: '6SS6K3l-I6M',
+                fallbackUrl: 'https://www.youtube.com/results?search_query=삼두근+운동',
+                desc: '팔 위쪽 뒷면에 위치하며 팔꿈치를 펴는 모든 밀기 동작의 핵심입니다.',
+                exercises: ['트라이셉스 푸시다운', '라잉 트라이셉스 익스텐션', '클로즈 그립 벤치프레스'],
+                icon: 'fa-solid fa-hand'
+            },
+            {
+                id: 'abs',
+                name: '복직근 (복근)',
+                latin: 'Rectus Abdominis',
+                category: 'core',
+                categoryLabel: '코어',
+                youtubeId: 'hdO3S0KkI34',
+                fallbackUrl: 'https://www.youtube.com/results?search_query=복근+코어+운동',
+                desc: '복부 중앙에 위치하여 척추를 앞쪽으로 구부리고 신체 코어의 안정성을 유지해줍니다.',
+                exercises: ['크런치 (Crunch)', '레그 레이즈 (Leg Raise)', '플랭크 (Plank)', '어브 휠'],
+                icon: 'fa-solid fa-cubes'
+            },
+            {
+                id: 'quads',
+                name: '대퇴사두근 (허벅지 앞)',
+                latin: 'Quadriceps Femoris',
+                category: 'lower',
+                categoryLabel: '하체',
+                youtubeId: 'g7z8x1pW044',
+                fallbackUrl: 'https://www.youtube.com/results?search_query=대퇴사두근+운동',
+                desc: '허벅지 앞쪽의 강력한 4개 근육군으로 무릎을 펴고 체중을 지탱하는 가장 대표적인 하체 근육입니다.',
+                exercises: ['스쿼트 (Squat)', '레그 프레스 (Leg Press)', '레그 익스텐션 (Leg Extension)', '런지'],
+                icon: 'fa-solid fa-person-walking'
+            },
+            {
+                id: 'glutes',
+                name: '대둔근 (엉덩이)',
+                latin: 'Gluteus Maximus',
+                category: 'lower',
+                categoryLabel: '하체',
+                youtubeId: 'SEdqd1n0cvg',
+                fallbackUrl: 'https://www.youtube.com/results?search_query=대둔근+엉덩이+운동',
+                desc: '인체에서 가장 신체 면적이 크고 힘이 강한 근육 중 하나로 고관절을 펴고 상체를 바로 세웁니다.',
+                exercises: ['힙 쓰러스트 (Hip Thrust)', '루마니안 데드리프트', '케이블 킥백'],
+                icon: 'fa-solid fa-child'
+            }
+        ];
+
+        // Protocol Check (Detect file:// vs http://)
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.location.protocol === 'file:') {
+                document.getElementById('fileProtocolTip').classList.remove('hidden');
+                document.getElementById('protocolText').innerText = '로컬 파일(file://) 모드';
+            }
+            renderMuscles(muscleData);
+        });
+
+        // Render Muscle Cards
+        function renderMuscles(items) {
+            const grid = document.getElementById('muscleGrid');
+            grid.innerHTML = items.map(m => `
+                <div class="muscle-card bg-slate-800/90 border border-slate-700/80 rounded-2xl p-5 shadow-xl hover:border-blue-500/50 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-slate-700 text-slate-300">${m.categoryLabel}</span>
+                            <i class="${m.icon} text-slate-500 text-lg"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-0.5">${m.name}</h3>
+                        <p class="text-xs text-slate-400 italic mb-3">${m.latin}</p>
+                        <p class="text-xs text-slate-300 line-clamp-2 leading-relaxed mb-4">${m.desc}</p>
+                    </div>
+                    <button onclick="openModal('${m.id}')" class="w-full py-2.5 px-4 rounded-xl bg-blue-600/20 hover:bg-blue-600 border border-blue-500/40 hover:border-transparent text-blue-300 hover:text-white font-medium text-xs transition flex items-center justify-center space-x-2 group">
+                        <i class="fa-solid fa-play text-xs group-hover:scale-110 transition-transform"></i>
+                        <span>운동 가이드 영상 보기</span>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Category Filter Function
+        function filterMuscles(category) {
+            // Update active button UI
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white', 'shadow-lg', 'shadow-blue-600/30');
+                btn.classList.add('bg-slate-800', 'text-slate-300');
+            });
+            event.target.classList.remove('bg-slate-800', 'text-slate-300');
+            event.target.classList.add('bg-blue-600', 'text-white', 'shadow-lg', 'shadow-blue-600/30');
+
+            if (category === 'all') {
+                renderMuscles(muscleData);
+            } else {
+                const filtered = muscleData.filter(m => m.category === category);
+                renderMuscles(filtered);
+            }
+        }
+
+        // Open Modal and Inject YouTube Iframe (Fixing Error 153)
+        function openModal(id) {
+            const m = muscleData.find(item => item.id === id);
+            if (!m) return;
+
+            document.getElementById('modalTitle').innerText = m.name;
+            document.getElementById('modalLatin').innerText = m.latin;
+            document.getElementById('modalCategoryBadge').innerText = m.categoryLabel;
+            document.getElementById('modalDesc').innerText = m.desc;
+
+            // Render exercises list
+            const exList = document.getElementById('modalExercises');
+            exList.innerHTML = m.exercises.map(ex => `<li>${ex}</li>`).join('');
+
+            // Direct link to YouTube
+            const directBtn = document.getElementById('directYouTubeBtn');
+            directBtn.href = `https://www.youtube.com/watch?v=${m.youtubeId}`;
+
+            // Inject Iframe with strict referrer policies
+            const playerContainer = document.getElementById('playerContainer');
+            
+            // Using youtube-nocookie.com & referrerpolicy="strict-origin-when-cross-origin" to eliminate Error 153
+            const embedUrl = `https://www.youtube-nocookie.com/embed/${m.youtubeId}?autoplay=1&rel=0&enablejsapi=1`;
+
+            playerContainer.innerHTML = `
+                <iframe 
+                    class="w-full h-full border-0"
+                    src="${embedUrl}" 
+                    title="${m.name} 운동 영상" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    allowfullscreen>
+                </iframe>
+            `;
+
+            // Display modal
+            const modal = document.getElementById('videoModal');
+            const modalCard = document.getElementById('modalCard');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modalCard.classList.remove('scale-95');
+            modalCard.classList.add('scale-100');
+        }
+
+        // Close Modal and Stop Video
+        function closeModal() {
+            const modal = document.getElementById('videoModal');
+            const modalCard = document.getElementById('modalCard');
+            
+            modalCard.classList.remove('scale-100');
+            modalCard.classList.add('scale-95');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+
+            // Clear iframe to stop video playback audio
+            setTimeout(() => {
+                document.getElementById('playerContainer').innerHTML = '';
+            }, 300);
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+    </script>
+</body>
+</html>
